@@ -1,99 +1,102 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-  <head>
-    <meta charset="utf-8">
-    <title>8th Wall Web: Tap to place</title>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
 
-    <!-- We've included a slightly modified version of A-Frame, which fixes some polish concerns -->
-    <script src="//cdn.8thwall.com/web/aframe/8frame-0.8.2.min.js"></script>
-    <script src="//cdn.8thwall.com/web/aframe/aframe-animation-component-5.1.2.min.js"></script>
+  <title>8th Wall Alpha Video Example</title>
 
-    <!-- XR Extras - provides utilities like load screen, almost there, and error handling.
+  <script src="//cdn.8thwall.com/web/aframe/8frame-0.9.0.min.js"></script>
+
+  <!-- https://github.com/nikolaiwarner/aframe-chromakey-material/blob/master/README.md -->
+  <script src="https://unpkg.com/aframe-chromakey-material/dist/aframe-chromakey-material.min.js"></script>
+
+  <!-- XR Extras - provides utilities like load screen, almost there, and error handling.
          See github.com/8thwall/web/xrextras -->
-    <script defer src="//cdn.8thwall.com/web/xrextras/xrextras.js"></script>
+  <script src="//cdn.8thwall.com/web/xrextras/xrextras.js"></script>
 
-    <!-- 8thWall Web - Replace the app key here with your own app key -->
-    <script async src="//apps.8thwall.com/xrweb?appKey=6mEx3cipVCLbQG6CykP5NmVjoi6TsaUuu4wJE30beNsIAo0YTduH5jLfLAc0AnPBiFVcCU"></script>
+  <!-- 8thWall Web - Replace the app key here with your own app key -->
+  <script src="//apps.8thwall.com/xrweb?appKey=6mEx3cipVCLbQG6CykP5NmVjoi6TsaUuu4wJE30beNsIAo0YTduH5jLfLAc0AnPBiFVcCU"></script>
 
-    <script>
-      // Component that places trees where the ground is clicked
-      AFRAME.registerComponent('tap-place', {
-        init: function() {
-          const ground = document.getElementById('ground')
-          ground.addEventListener('click', event => {
-            // Create new entity for the new object
-            const newElement = document.createElement('a-entity')
+  <script>
+    AFRAME.registerComponent('target-video', {
+      schema: {
+        name: { type: 'string' },
+        video: {type: 'string' },
+      },
+      init: function () {
+        const object3D = this.el.object3D
+        const name = this.data.name
+        object3D.visible = false
+        const v = document.querySelector(this.data.video)
+        const el = this.el
 
-            // The raycaster gives a location of the touch in the scene
-            const touchPoint = event.detail.intersection.point
-            newElement.setAttribute('position', touchPoint)
-
-            const randomYRotation = Math.random() * 360
-            newElement.setAttribute('rotation', '0 ' + randomYRotation + ' 0')
-
-            newElement.setAttribute('visible', 'false')
-            newElement.setAttribute('scale', '0.0001 0.0001 0.0001')
-
-            newElement.setAttribute('gltf-model', '#treeModel')
-            this.el.sceneEl.appendChild(newElement)
-
-            newElement.addEventListener('model-loaded', () => {
-              // Once the model is loaded, we are ready to show it popping in using an animation
-              newElement.setAttribute('visible', 'true')
-              newElement.setAttribute('animation', {
-                property: 'scale',
-                to: '0.3 0.3 0.3',
-                easing: 'easeOutElastic',
-                dur: 800,
-              })
-            })
-          })
+        const showImage = ({detail}) => {
+          if (name != detail.name) {
+            return
+          }
+          v.play()
+          object3D.position.copy(detail.position)
+          object3D.quaternion.copy(detail.rotation)
+          object3D.scale.set(detail.scale, detail.scale, detail.scale)
+          object3D.visible = true
         }
-      })
-    </script>
-  </head>
 
-  <body>
-    <!-- We must add the tap-place component to the scene so it has an effect -->
-    <a-scene
-      xrweb
-      tap-place
-      xrextras-almost-there
-      xrextras-loading
-      xrextras-runtime-error>
+        const hideImage = ({detail}) => {
+          if (name != detail.name) {
+            return
+          }
+          v.pause()
+          object3D.visible = false
+        }
 
-      <!-- We can define assets here to be loaded when A-Frame initializes -->
-      <a-assets>
-        <!-- Credit to Poly by Google for the model: https://poly.google.com/view/6pwiq7hSrHr -->
-        <a-asset-item id="treeModel" src="castellfollit01.glb"></a-asset-item>
-      </a-assets>
+        this.el.sceneEl.addEventListener('xrimagefound', showImage)
+        this.el.sceneEl.addEventListener('xrimageupdated', showImage)
+        this.el.sceneEl.addEventListener('xrimagelost', hideImage)
+      }
+    })
+  </script>
+</head>
 
-      <!-- The raycaster will emit mouse events on scene objects specified with the cantap class -->
-      <a-camera
-        position="0 8 0"
-        raycaster="objects: .cantap"
-        cursor="
-          fuse: false;
-          rayOrigin: mouse;">
-      </a-camera>
+<body>
 
-      <a-entity
-        light="type: directional;
-               intensity: 0.8;"
-        position="1 4.3 2.5">
-      </a-entity>
+  <a-scene
+    xrweb="disableWorldTracking: true"
+    xrextras-gesture-detector
+    xrextras-almost-there
+    xrextras-loading
+    xrextras-runtime-error>
 
-      <a-light type="ambient" intensity="1"></a-light>
+    <a-assets>
+      <video
+        id="alpha-video"
+        muted
+        autoplay
+        playsinline
+        crossorigin="anonymous"
+        loop="true"
+        src="https://cdn.8thwall.com/web/assets/video/alpaca.mp4">
+      </video>
+    </a-assets>
 
-      <!-- Adding the cantap class allows the ground to be clicked -->
-      <a-entity
-        id="ground"
-        class="cantap"
-        geometry="primitive: box"
-        material="color: #ffffff; transparent: true; opacity: 0.0"
-        scale="1000 2 1000"
-        position="0 -1 0">
-      </a-entity>
-    </a-scene>
-  </body>
+    <a-camera
+      position="0 4 10"
+      raycaster="objects: .cantap"
+      cursor="fuse: false; rayOrigin: mouse;">
+    </a-camera>
+
+    <a-light type="directional" intensity="0.5" position="1 1 1"></a-light>
+
+    <a-light type="ambient" intensity="1"></a-light>
+
+    <!-- Note: "name:" must be set to the name of the image target uploaded to the 8th Wall Console -->
+    <a-entity
+      target-video="name: outside; video: #alpha-video;"
+      material="shader: chromakey; src: #alpha-video; color: 0.1 0.9 0.2"
+      geometry="primitive: plane; height: 0.6; width: 1.38;">
+    </a-entity>
+
+  </a-scene>
+
+</body>
 </html>
